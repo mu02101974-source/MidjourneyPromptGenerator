@@ -1,6 +1,6 @@
 # MidjourneyPromptGenerator
 
-Create a structured prompt for Midjourney to create pictures.
+Create a structured prompt for Midjourney to create pictures. Prompt will be created on the fly.
 
 Download the HTML File and use it in your Browser.
 
