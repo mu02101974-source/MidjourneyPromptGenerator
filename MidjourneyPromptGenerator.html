@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Midjourney Prompt Generator</title>
+<style>
+:root{
+  --bg:#0b1324; --panel:#101a33; --ink:#e6ecff; --muted:#a9b3d1;
+  --accent:#5ee1ff; --accent-2:#7cf7a4; --line:#223057;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; color:var(--ink);
+  background:radial-gradient(1200px 800px at 80% -10%, #142552 0%, rgba(20,37,82,0) 70%),
+             radial-gradient(900px 700px at -10% 110%, #0f1f45 0%, rgba(15,31,69,0) 70%), var(--bg);
+  line-height:1.4;
+}
+header{
+  position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(8px);
+  background:linear-gradient(180deg, rgba(11,19,36,.92), rgba(11,19,36,.8));
+  border-bottom:1px solid var(--line); padding:.9rem 1rem;
+}
+header h1{margin:0; font-size:1.15rem; letter-spacing:.3px;}
+header p{margin:.25rem 0 0; color:var(--muted); font-size:.9rem;}
+.wrap{display:grid; grid-template-columns:1.1fr .9fr; gap:16px; padding:16px;}
+@media(max-width:1100px){.wrap{grid-template-columns:1fr;}}
+.panel{
+  background:linear-gradient(180deg, rgba(17,28,56,.9), rgba(13,22,44,.9));
+  border:1px solid var(--line); border-radius:16px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+.grid{display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px}
+.grid-1{display:grid; grid-template-columns: 1fr; gap:12px}
+fieldset{border:1px dashed var(--line); border-radius:12px; padding:12px; margin:0;}
+legend{padding:0 .4rem; color:var(--accent); font-size:.95rem;}
+label{display:block; font-size:.85rem; color:var(--muted); margin-bottom:.35rem}
+input[type="text"], input[type="number"], textarea, select{
+  width:100%; background:#0e1a34; color:var(--ink); border:1px solid #1f2c52; border-radius:10px; padding:.6rem .7rem; outline:none;
+}
+textarea{
+  min-height:80px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  font-size:.9rem; width:100%; background:#0e1a34; color:var(--ink);
+  border:1px solid #1f2c52; border-radius:10px; padding:.6rem .7rem;
+}
+
+/* Range slider */
+input[type="range"] {-webkit-appearance:none;width:100%;height:8px;background:#1f2c52;border-radius:8px;outline:none;margin:0;padding:0;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;height:20px;width:20px;border-radius:50%;background:linear-gradient(90deg, var(--accent), var(--accent-2));border:2px solid #031024;margin-top:-6px;cursor:pointer;transition:transform .2s ease;}
+input[type="range"]::-moz-range-thumb{height:20px;width:20px;border-radius:50%;background:linear-gradient(90deg, var(--accent), var(--accent-2));border:2px solid #031024;cursor:pointer;}
+input[type="range"]::-moz-range-track{height:8px;border-radius:8px;background:#1f2c52;}
+
+.sticky-actions{position:sticky; bottom:10px; display:flex; gap:8px; justify-content:flex-end; margin-top:14px;}
+.btn{appearance:none; border:none; border-radius:999px; padding:.55rem .9rem; color:#031024; font-weight:600; cursor:pointer;}
+.btn-ghost{background:transparent; color:var(--ink); border:1px solid var(--line);}
+.btn-accent{background:linear-gradient(90deg, var(--accent), var(--accent-2));}
+.tag{display:inline-block; border:1px solid var(--line); border-radius:999px; padding:.2rem .55rem; font-size:.75rem; color:var(--muted)}
+.small{font-size:.8rem; color:var(--muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+
+/* Chips grid */
+.chips-container{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;overflow:hidden;max-height:1000px;transition:max-height .3s ease,padding .3s ease;padding:8px 0;}
+.chips-container.collapsed{max-height:0;padding:0;}
+.chip{width:100%;text-align:center;padding:.45rem .6rem;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:.85rem;cursor:pointer;transition:all .2s ease;user-select:none;}
+.chip:hover{background:var(--line);color:var(--ink);transform:translateY(-1px);}
+.chip.active{background:linear-gradient(90deg, var(--accent), var(--accent-2));color:#031024;border-color:transparent;box-shadow:0 4px 10px rgba(0,0,0,.25);transform:translateY(-1px);}
+.section-toggle{display:flex;justify-content:space-between;align-items:center;width:100%;padding:.5rem 1rem;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink);cursor:pointer;margin-top:4px;}
+.toggle-icon{font-weight:bold;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Midjourney Prompt Generator</h1>
+  <p>Select styles via chips. Prompt updates live.</p>
+</header>
+
+<div class="wrap">
+  <main class="panel" id="formPanel">
+    <form id="promptForm" class="grid-1">
+
+      <fieldset>
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" placeholder="Main prompt (e.g., A sleek spaceship landing in the middle of a jungle world)"></textarea>
+      </fieldset>
+
+      <fieldset>
+        <label for="negative_prompt">Negative Prompt</label>
+        <textarea id="negative_prompt" placeholder="Terms to avoid (no commas)"></textarea>
+      </fieldset>
+
+      <!-- Midjourney Parameters -->
+      <fieldset>
+        <legend>Midjourney Parameters</legend>
+        <div class="grid">
+          <div>
+            <label>Aspect Ratio</label>
+            <select id="aspect-ratio" name="aspect-ratio">
+              <option value="--ar 1:1" selected>1:1 Square (default)</option>
+              <option value="--ar 1:2">1:2 Portrait</option>
+              <option value="--ar 2:3">2:3 Portrait</option>
+              <option value="--ar 3:4">3:4 Portrait</option>
+              <option value="--ar 5:6">5:6 Portrait</option>
+              <option value="--ar 9:16">9:16 Portrait</option>
+              <option value="--ar 9:21">9:21 Portrait</option>
+              <option value="--ar 2:1">2:1 Landscape</option>
+              <option value="--ar 3:2">3:2 Landscape</option>
+              <option value="--ar 4:3">4:3 Landscape</option>
+              <option value="--ar 6:5">6:5 Landscape</option>
+              <option value="--ar 21:9">21:9 Landscape</option>
+              <option value="--ar 16:9">16:9 Landscape</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Midjourney Version</label>
+            <select id="version" name="version">
+              <option value="--v 1">1 (Legacy)</option>
+              <option value="--v 2">2 (Legacy)</option>
+              <option value="--v 3">3 (Legacy)</option>
+              <option value="--v 4">4 (Legacy)</option>
+              <option value="--niji 4">Niji 4.0 (Legacy)</option>
+              <option value="--v 5">5.0 (Legacy)</option>
+              <option value="--niji 5">Niji 5.0 (Legacy)</option>
+              <option value="--v 5.1">5.1 (Legacy)</option>
+              <option value="--v 5.2">5.2 (Legacy)</option>
+              <option value="--v 6.0">6.0</option>
+              <option value="--niji 6">Niji 6.0</option>
+              <option value="--v 6.1">6.1</option>
+              <option value="--v 7" selected>7 (default)</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Quality</label>
+            <select id="quality" name="quality">
+              <option value="--q 1" selected>1 (Recommended for v7)</option>
+              <option value="--q 2">2 (Recommended for v6)</option>
+              <option value="--q 4">4 (Experimental for v7 only)</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Stylization</label>
+            <select id="stylize" name="stylize">
+              <option value="--s 0">0</option>
+              <option value="--s 50">50</option>
+              <option value="--s 100" selected>100 (default)</option>
+              <option value="--s 150">150</option>
+              <option value="--s 200">200</option>
+              <option value="--s 250">250</option>
+              <option value="--s 300">300</option>
+              <option value="--s 350">350</option>
+              <option value="--s 400">400</option>
+              <option value="--s 450">450</option>
+              <option value="--s 500">500</option>
+              <option value="--s 550">550</option>
+              <option value="--s 600">600</option>
+              <option value="--s 650">650</option>
+              <option value="--s 700">700</option>
+              <option value="--s 750">750</option>
+              <option value="--s 800">800</option>
+              <option value="--s 850">850</option>
+              <option value="--s 900">900</option>
+              <option value="--s 950">950</option>
+              <option value="--s 1000">1000</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Weirdness</label>
+            <select id="weird" name="weird">
+              <option value="--weird 0" selected>0 (default)</option>
+              <option value="--weird 100">100</option>
+              <option value="--weird 200">200</option>
+              <option value="--weird 300">300</option>
+              <option value="--weird 400">400</option>
+              <option value="--weird 500">500</option>
+              <option value="--weird 600">600</option>
+              <option value="--weird 700">700</option>
+              <option value="--weird 800">800</option>
+              <option value="--weird 900">900</option>
+              <option value="--weird 1000">1000</option>
+              <option value="--weird 1100">1100</option>
+              <option value="--weird 1200">1200</option>
+              <option value="--weird 1300">1300</option>
+              <option value="--weird 1400">1400</option>
+              <option value="--weird 1500">1500</option>
+              <option value="--weird 1600">1600</option>
+              <option value="--weird 1700">1700</option>
+              <option value="--weird 1800">1800</option>
+              <option value="--weird 1900">1900</option>
+              <option value="--weird 2000">2000</option>
+              <option value="--weird 2100">2100</option>
+              <option value="--weird 2200">2200</option>
+              <option value="--weird 2300">2300</option>
+              <option value="--weird 2400">2400</option>
+              <option value="--weird 2500">2500</option>
+              <option value="--weird 2600">2600</option>
+              <option value="--weird 2700">2700</option>
+              <option value="--weird 2800">2800</option>
+              <option value="--weird 2900">2900</option>
+              <option value="--weird 3000">3000</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Variety / Chaos (%)</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="range" id="chaosSlider" min="0" max="100" value="0" style="flex:1; width:100%; min-width:0;">
+              <span id="chaosValue" class="small" style="width:30px; text-align:right;">0</span>
+            </div>
+          </div>
+
+          <div>
+            <label>Speed</label>
+            <select id="speed" name="speed">
+              <option value="--fast" selected>Fast (default)</option>
+              <option value="--relax">Relax</option>
+              <option value="--turbo">Turbo</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Mode</label>
+            <select id="mode" name="mode">
+              <option value="" selected>Standard (default)</option>
+              <option value="--style raw">Raw (≥ v5.1)</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Draft Mode</label>
+            <select id="draft" name="draft">
+              <option value="" selected>Off (default)</option>
+              <option value="--draft">On</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- Chips-Sektionen werden via JS generiert -->
+
+      <div class="sticky-actions">
+        <button type="button" class="btn btn-accent" id="copyPrompt">Copy Prompt</button>
+        <button type="button" class="btn btn-ghost" id="downloadPrompt">Download</button>
+        <button type="button" class="btn btn-ghost" id="clearAll">Clear All</button>
+      </div>
+    </form>
+  </main>
+
+  <aside class="panel">
+    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+      <span class="tag">Live Prompt</span>
+      <span class="small" id="bytes">0 bytes</span>
+    </div>
+    <textarea id="output" class="mono" style="min-height:70vh" readonly>--fast</textarea>
+  </aside>
+</div>
+
+<script>
+// Shorthands
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+// === SECTIONS (alle Chips) ===
+const sections = [
+  {name:'Art Style', type:'single', items:['None','Abstract Expressionism','Anime & Manga','Apocalyptic','Aquarelle','Art Deco','Art Nouveau','Avant-Garde','Baroque','Bauhaus','Black Noir','Bio Art','Brutalism','Classicism','Comical Horror','Conceptual Art','Constructivism Art','Contemporary Art','Cosmic Horror','Cottagecore','Cubism','Cyberpunk','Dadaism','Dark Academia','Dark Adventure','Dark Fantasy','Digital Art','Dystopian','Euphoric','Expressionism','Fantastic Realism','Fantasy','Fauvism','Film Noir','Folk Art','Futuristic','Generative Art','Gothic Art','Graffiti','Haunting','High Fantasy','Historical','Horror','Hyperrealism','Impressionism','Installation Art','Japanese','Land Art','Light and Space','Lowbrow Art','Magical Realism','Majestic','Metaphysical','Minimalism','Minimalist/Abstract','Mythological','Naive Art','Neo-Expressionism','Neoclassicism','Neon Art','New Media Art','Nostalgia','Photorealism','Pixel Art','Pop Art','Post-Impressionism','Postminimalism','Precisionism','Primitivism','Psychedelic','Renaissance','Retro-Futurism','Rococo','Romanticism','Sci-Fi','Steampunk','Surreal/Dreamlike','Symbolism','Tonalism','Transcendent','Ukiyo-e','Utopian','Vector Art','Vintage','Watercolor','Woodblock Print']},
+  {name:'Emotion & Mood', type:'multi', items:['Admiring','Adventurous','Angry','Anticipating','Anxious','Apathetic','Ashamed','Atmospheric','Blissful','Bold','Bored','Chaotic','Cinematic','Compassionate','Confident','Confused','Curious','Defeated','Depressed','Desolate','Despairing','Determined','Disgusted','Dramatic','Dreamy','Dynamic','Elegant','Embarrassed','Empathetic','Energetic','Enraged','Enthusiastic','Envious','Ethereal','Euphoric','Excited','Exhausted','Experimental','Fearful','Frustrated','Glamorous','Grateful','Grieving','Grotesque','Guilty','Happy','Haunting','Heroic','Hopeful','Humble','Hungry','Insecure','Inspired','Intense','Intimate','Jealous','Joyful','Lonely','Loving','Majestic','Melancholic','Mysterious','Mystical','Nostalgic','Overwhelming','Passionate','Pitying','Playful','Poetic','Proud','Raw','Rebellious','Regretful','Relieved','Remorseful','Resentful','Romantic','Sad','Satisfied','Shocked','Sinister','Sophisticated','Spooky','Subtle Unease','Surprised','Sympathetic','Thoughtful','Transcendent','Triumphant','Unsettling','Vibrant','Vulnerable']},
+  {name:'Camera Angle & Shot Types', type:'multi', items:['Aerial Shot','Birds Eye View Shot','Candid Shot','Close-up Shot','Cockpit View','Dramatic Framing','Drone Shot','Extreme Close-Up Shot','Extreme High-angle Shot','Extreme Long Shot','Extreme Low-angle Shot','Eye Level Shot','Full Body Shot','Full Shot','Ground-level View','High Angle Shot','Interior View','Long shot','Low Angle Shot','Off-Center View','Overhead Shot','Over-the-Shoulder Shot','Reaction Shot','Reverse Angle Shot','Shot from Behind','Side View Shot','Slight High Angle Shot','Slight Low Angle Shot','Split Screen','Tunnel View','Underwater Close-Up Shot','Underwater Shot','Water Level','Webcam-Style Shot','Wide Shot']},
+  {name:'Natural Lighting', type:'multi', items:['Aurora Borealis','Alien Sunlight','Dawn','Diffused Sunlight','Dusk','Foggy','Hazy','Laboratory Lighting','Moonlight','Partly Cloudy','Rainy Day','Rainy Night','Snowy','Soft Morning Light','Starlight','Sunny','Torchlight','Twilight','Volcanic Glow','Wet Surface Reflections']},
+  {name:'Ambiance & Styling', type:'multi', items:['Advanced Technology','Adventure/Action','Bright and vibrant','Chaotic','Cinematic','Classic','Cramped','Cyberpunk','Dark and moody','Documentary','Dense Urban','Dusty','Elegant','Energetic','Fantasy','Futuristic','Gothic','Historical','Horror','Industrial','Minimalist','Modern','Massive Scale','Mystical','Organic','Playful','Retro','Romantic','Rustic','Sci-Fi','Space Fashion','Surreal','Urban','Vintage','Whimsical']},
+  {name:'Ambient Lighting', type:'multi', items:['Ambient Shadows','Atmospheric Light','Atmospheric Haze','City Lights','Floor Lamps','Holographic Glow','Lantern Light','Low Light','Natural Light','Nebular Glow','Neon Glow','Planetary Glow','Skylights','Spotlight','Streetlights','Table Lamps','Torch Light','Wall Sconces','Warm Glow','Warm Glow from Fire','Windows']},
+  {name:'Lighting Effects', type:'multi', items:['Absorption','Ambient','Atmospheric Particles','Back Light','Bright Highlights','Chromatic','Cinematic Light','Diffused Light','Dramatic Highlights','Dramatic Shadows','Dock Illumination','Dust Particles in Light Beams','Emergency Lights','Fluorescence','Fire Light','Glowing Highlights','Hard Shadows','High Contrast','Infrared Light','Light Pollution','Low Key Light','Luminescence','Motion Blur','Natural Shadows','Neon Glow','Neon Light','Opaque','Phosphorescence','Photoluminescence','Polarized','Prismatic','Rainbow Glow Light','Rayleigh Scattering','Reflection','Reflective Accents','Reflective Shadows','Sharp Rim Lighting','Soft Shadows','Solarized','Sparkly','Subtle Glow','Subtle Highlights','Translucent','Transparent','Volumetric Lighting','Waning Light']},
+  {name:'Color Treatment', type:'multi', items:['Bright Colors','Chromatic Aberration','Cinematic','Color Grading','Colorized Colors','Cool Tones','Dark Colors','Darkened Colors','Darkened with Golden Highlights','Deep Shadows with Bright Accents','Desaturated Colors','Earth Tones','Gradient Colors','High-contrast Colors','Light Colors','Monochrome','Muted Accents','Muted Colors','Muted Earthy Tones','Muted Pastels','Muted Tones with Rich Accents','Muted with vibrant accents','Pastel','Saturated Colors','Tonal Colors','Vibrant Accent Colors','Vibrant Colors','Vibrant Contrasts','Vibrant Highlights','Vibrant with Muted Accents','Vibrant with Muted Shadows','Vibrant with Gradient Transitions','Vibrant with Pastel Accents','Vivid Colors','Vivid with Bold Contrasts','Vintage Colors','Warm Colors','Warm Tones','Washed-out Colors']},
+  {name:'Reflections & Refractions', type:'multi', items:['Atmospheric Haze','Atmospheric Scatter','Bioluminescence','Diffused Reflection','Dispersion','Distorted Reflection','Glare','Glimmering','Glossy','Glossy Reflection','Linear Polarization','Matte','Matte and Weathered Surfaces','Polished','Polished Reflection','Rainbow','Rain on Glass','Rough','Shimmer','Shimmering','Shiny','Smooth Reflection','Subtle Glow Reflections','Specular Highlights','Subtle Reflection','Subtle Reflection in Water','Total Internal Reflection','Translucent','Transparent','Wet Surfaces']},
+  {name:'Chromism & Luminescence', type:'multi', items:['Bioluminescence','Chemiluminescence','Cherenkov Radiation','Chromism','Electrochromism','Electroluminescence','Faint Glow','Fluorescence','Glow-In-The-Dark','Glowing','Glowing Neon','Goniochromism','Hydrochromism','Luminescence','Mechanochromism','Metallochromism','Phosphorescence','Photochromism','Photoluminescence','Piezochromism','Radiant','Radioluminescence','Subtle Glow','Subtle Sheen','Street Neon','System Indicators','Thermochromism','Tribochromism','Vivid Glow']},
+  {name:'Textures & Patterns', type:'multi', items:['Botanical','Brushed','Brushed metal','Checkered','Chevron','Cracked','Cracked paint','Crocheted','Debossed','Dotted','Embossed','Fabric','Floral','Frosted','Geometric patterns','Grainy','Gravelly','Herringbone','Irregular','Knitted','Layered','Leather','Marble','Marbled','Matte','Mesh','Mosaic','Netting','Organic patterns','Pebbled','Plaid','Polka dots','Random','Reptilian','Rippled','Rough','Scaly','Smooth','Speckled','Spotted','Stippled','Stone','Striated','Striped','Suede','Swirled','Textile weave','Tile patterns','Wavy','Wood grain','Zigzag']}
+];
+
+// Dynamisch Panels & Chips erzeugen
+const form = document.getElementById('promptForm');
+sections.forEach(sec=>{
+  const fieldset = document.createElement('fieldset');
+  const legend = document.createElement('legend'); legend.textContent = sec.name;
+  fieldset.appendChild(legend);
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.type='button';
+  toggleBtn.className='section-toggle';
+  toggleBtn.innerHTML = `${sec.name} <span class="toggle-icon">＋</span>`;
+  fieldset.appendChild(toggleBtn);
+
+  const container = document.createElement('div');
+  container.className='chips-container collapsed';
+  sec.items.forEach(it=>{
+    const chip = document.createElement('button');
+    chip.type='button';
+    chip.className = 'chip ' + (sec.type === 'single' ? 'single' : 'multi');
+    chip.dataset.prompt = it;
+    chip.textContent = it;
+    container.appendChild(chip);
+  });
+
+  fieldset.appendChild(container);
+  form.insertBefore(fieldset, form.querySelector('.sticky-actions'));
+});
+
+// Toggle einklappen/ausklappen (nur Klasse toggeln)
+document.addEventListener('click', e=>{
+  if(!e.target.classList.contains('section-toggle')) return;
+  const container = e.target.nextElementSibling;
+  container.classList.toggle('collapsed');
+  e.target.querySelector('.toggle-icon').textContent = container.classList.contains('collapsed') ? '＋' : '－';
+});
+
+// Chips klicken
+document.addEventListener('click', e=>{
+  if(!e.target.classList.contains('chip')) return;
+  const chip = e.target;
+  const container = chip.parentElement;
+  const isSingle = chip.classList.contains('single');
+
+  if(isSingle){
+    container.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    // „None“ bedeutet: alles abwählen -> kein aktiver Chip
+    if(chip.dataset.prompt !== 'None') chip.classList.add('active');
+  } else {
+    chip.classList.toggle('active');
+  }
+  updatePrompt();
+});
+
+// ---------- Phrasen-Templates ----------
+const sectionPrompts = {
+  'Camera Angle & Shot Types': items => items.length ? `viewed from a ${items.map(niceJoinWord).join(', ')} view` : '',
+  'Natural Lighting': items => items.length ? `lighting is ${joinAnd(items.map(niceJoinWord))}` : '',
+  'Ambiance & Styling': items => items.length ? `with a ${items.map(niceJoinWord).join(', ')} vibe` : '',
+  'Ambient Lighting': items => items.length ? `accented by ${items.map(niceJoinWord).join(', ')}` : '',
+  'Lighting Effects': items => items.length ? `featuring ${items.map(niceJoinWord).join(', ')} light effects` : '',
+  'Color Treatment': items => items.length ? `featuring ${items.map(niceJoinWord).join(', ')} colors` : '',
+  'Reflections & Refractions': items => items.length ? `with ${items.map(niceJoinWord).join(', ')}` : '',
+  'Chromism & Luminescence': items => items.length ? `showcasing ${items.map(niceJoinWord).join(', ')} effects` : '',
+  'Textures & Patterns': items => items.length ? `with ${items.map(niceJoinWord).join(', ')} textures` : ''
+};
+
+// kleine Helfer: „off-center“ statt „Off-Center View“, „water level“ usw.
+function niceJoinWord(s){
+  return s
+    .replace(/View|Shot/gi,'')       // Begriffe entschlacken
+    .replace(/\s{2,}/g,' ')
+    .trim()
+    .toLowerCase();
+}
+function joinAnd(arr){
+  if(arr.length <= 1) return arr.join('');
+  if(arr.length === 2) return `${arr[0]} and ${arr[1]}`;
+  return `${arr.slice(0,-1).join(', ')}, and ${arr[arr.length-1]}`;
+}
+
+// Art Style Mapping (Spezialfälle)
+const artStyleMap = { 'Anime & Manga': 'anime & manga' };
+
+// Grammatik/Cleanups
+function cleanSentence(text){
+  return text
+    .replace(/\b(\w+)\s+\1\b/gi, '$1') // doppelte Wörter
+    .replace(/\s+,/g, ',')             // Leerzeichen vor Komma
+    .replace(/,+/g, ',')               // doppelte Kommas
+    .replace(/,\s*\./g, '.')           // ", ." -> "."
+    .replace(/\s+/g, ' ')              // Mehrfachspaces
+    .trim();
+}
+
+function capitalizeSentences(text) {
+  return text.replace(/(^\s*[a-z]|[.!?]\s*[a-z])/g, match => match.toUpperCase());
+}
+
+// Chips zusammenbauen (Art Style + Mood zusammen)
+function buildChipsPrompt(){
+  const sectionsChips = {};
+  $$('.chip.active').forEach(chip=>{
+    const sectionName = chip.closest('fieldset').querySelector('legend').textContent.trim();
+    if(!sectionsChips[sectionName]) sectionsChips[sectionName] = [];
+    let v = chip.dataset.prompt;
+    if(sectionName === 'Art Style'){
+      if(v === 'None') return; // ignorieren
+      v = (artStyleMap[v] || v).toLowerCase();
+    } else {
+      v = v.toLowerCase();
+    }
+    sectionsChips[sectionName].push(v);
+  });
+
+  const parts = [];
+
+  // 1) Art Style + Emotion in EINEM Satz:
+  const art = sectionsChips['Art Style'] || [];
+  const mood = sectionsChips['Emotion & Mood'] || [];
+  const artMoodCombined = [...art, ...mood];
+  if(artMoodCombined.length){
+    parts.push(`in a ${artMoodCombined.join(', ')} style`);
+  }
+
+  // 2) Restliche Bereiche
+  Object.keys(sectionPrompts).forEach(section=>{
+    // „Emotion & Mood“ wurde oben schon gemerged, daher überspringen
+    if(section === 'Art Style' || section === 'Emotion & Mood') return;
+    const text = sectionPrompts[section](sectionsChips[section] || []);
+    if(text) parts.push(text);
+  });
+
+  return cleanSentence(parts.join('. ') + (parts.length ? '.' : ''));
+}
+
+// Prompt komplett bauen
+function buildPrompt(){
+  let prompt = $('#prompt').value.trim();
+  const negative = $('#negative_prompt').value.trim();
+
+  // Midjourney params
+  const ar      = $('#aspect-ratio').value;
+  const version = $('#version').value;
+  const quality = $('#quality').value;
+  const stylize = $('#stylize').value;
+  const weird   = $('#weird').value;
+  const speed   = $('#speed').value;
+  const mode    = $('#mode').value;
+  const draft   = $('#draft').value;
+  const chaos   = $('#chaosSlider').value;
+
+  const defaults = {
+    'aspect-ratio':'--ar 1:1', version:'--v 7', quality:'--q 1', stylize:'--s 100',
+    weird:'--weird 0', speed:'--fast', mode:'', draft:'', chaos:'0'
+  };
+
+  const params = [];
+  if(ar !== defaults['aspect-ratio']) params.push(ar);
+  if(version !== defaults.version)     params.push(version);
+  if(quality !== defaults.quality)     params.push(quality);
+  if(stylize !== defaults.stylize)     params.push(stylize);
+  if(weird !== defaults.weird)         params.push(weird);
+  if(mode !== defaults.mode)           params.push(mode);
+  if(draft !== defaults.draft)         params.push(draft);
+  params.push(speed); // Speed IMMER
+  if(chaos != 0)                        params.push(`--chaos ${chaos}`);
+
+  const chipsSentences = buildChipsPrompt();
+
+  if(prompt) prompt += chipsSentences ? ' ' + chipsSentences : '';
+  else prompt = chipsSentences;
+
+  if(negative) prompt += ` --no ${negative}`;
+  if(params.length) prompt += ' ' + params.join(' ');
+
+  return capitalizeSentences(prompt.trim());
+}
+
+// Live-Output aktualisieren
+function updatePrompt(){
+  const full = buildPrompt();
+  $('#output').value = full;
+  $('#bytes').textContent = new Blob([full]).size + ' bytes';
+}
+
+// Inputs live beobachten
+$$('#promptForm input, #promptForm textarea, #promptForm select').forEach(el=>{
+  el.addEventListener('input', updatePrompt);
+  el.addEventListener('change', updatePrompt);
+});
+
+// Chaos Slider Anzeige
+const slider = $('#chaosSlider');
+const sliderValue = $('#chaosValue');
+slider.addEventListener('input', ()=>{
+  sliderValue.textContent = slider.value;
+  updatePrompt();
+});
+
+// Copy & Download
+$('#copyPrompt').addEventListener('click', async ()=>{
+  await navigator.clipboard.writeText($('#output').value);
+  const btn=$('#copyPrompt'); const old=btn.textContent; btn.textContent='Copied!'; setTimeout(()=>btn.textContent=old,1000);
+});
+$('#downloadPrompt').addEventListener('click', ()=>{
+  const blob = new Blob([$('#output').value], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'midjourney_prompt.txt';
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+// Clear All (zurück auf Defaults + Chips leeren)
+$('#clearAll').addEventListener('click', ()=>{
+  $$('#promptForm input, #promptForm textarea').forEach(el=>{
+    if(el.type==='range'){ el.value = el.defaultValue || 0; }
+    else el.value='';
+  });
+  $$('#promptForm select').forEach(el=>{
+    const selectedOption = el.querySelector('option[selected]');
+    el.value = selectedOption ? selectedOption.value : el.options[0].value;
+  });
+  $$('.chip').forEach(c=>c.classList.remove('active'));
+  $('#chaosValue').textContent = '0';
+  updatePrompt();
+});
+
+// init
+updatePrompt();
+</script>
+</body>
+</html>
